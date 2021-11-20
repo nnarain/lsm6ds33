@@ -8,28 +8,44 @@
 #![allow(unused)]
 mod regs;
 
+use core::convert::TryFrom;
+
 use regs::*;
 
 pub use regs::{
-    AccelerometerOutput, AccelerometerScale, AccelerometerBandwidth,
-    GyroscopeOutput, GyroscopeFullScale, GyroscopeFullScale125Dps,
+    AccelerometerBandwidth, AccelerometerOutput, AccelerometerScale,
+    GyroscopeFullScale, GyroscopeOutput,
 };
 
 use embedded_hal::blocking::i2c::{Read, Write, WriteRead};
 
-const CHIP_ID: u8 = 0x69;
-
+/// Enum containing all possible types of errors when interacting with the IMU
 #[derive(Debug)]
 pub enum Error<E> {
     CommunicationError(E),
     ChipDetectFailed,
+    RegisterReadFailed,
 }
 
+// Allow converting the Error type from the I2C device to the error enum
 impl<E> From<E> for Error<E> {
     fn from(e: E) -> Self {
         Error::CommunicationError(e)
     }
 }
+
+// Allow converting register errors to the imu error
+// impl<E> From<RegisterError> for Error<E> {
+//     fn from(re: RegisterError) -> Self {
+//         Error::RegisterReadFailed(re)
+//     }
+// }
+
+// Value of the WHO_AM_I register
+const CHIP_ID: u8 = 0x69;
+
+// Earth gravity constant for acceleration conversion
+const EARTH_GRAVITY: f32 = 9.80665;
 
 /// 6-DoF IMU accelerometer + gyro
 pub struct Lsm6ds33<I2C> {
@@ -55,36 +71,83 @@ impl<I2C, E> Lsm6ds33<I2C>
         }
     }
 
+    /// Set the accelerometer output rate
     pub fn set_accelerometer_output(&mut self, output: AccelerometerOutput) -> Result<(), Error<E>> {
         self.write_register_option(Register::Ctrl1XL, output)
     }
 
+    /// Set the accelerometer operating range
     pub fn set_accelerometer_scale(&mut self, scale: AccelerometerScale) -> Result<(), Error<E>> {
         self.write_register_option(Register::Ctrl1XL, scale)
     }
 
+    /// Set the accelerometer bandwidth filter
     pub fn set_accelerometer_bandwidth(&mut self, bandwidth: AccelerometerBandwidth) -> Result<(), Error<E>> {
         self.write_register_option(Register::Ctrl1XL, bandwidth)
     }
 
+    /// Set the gyroscope output rate
     pub fn set_gyroscope_output(&mut self, output: GyroscopeOutput) -> Result<(), Error<E>> {
         self.write_register_option(Register::Ctrl2G, output)
     }
 
-    pub fn read_gyro(&mut self) -> Result<(i16, i16, i16), Error<E>> {
-        self.read_sensor(Register::OutXLG)
+    /// Set the gyroscope operating range
+    pub fn set_gyroscope_scale(&mut self, scale: GyroscopeFullScale) -> Result<(), Error<E>> {
+        self.write_register_option(Register::Ctrl2G, scale)
     }
 
-    pub fn read_accel(&mut self) -> Result<(i16, i16, i16), Error<E>> {
-        self.read_sensor(Register::OutXLXL)
+    /// Read the gyroscope data for each axis (RAD/s)
+    pub fn read_gyro(&mut self) -> Result<(f32, f32, f32), Error<E>> {
+        // Read the raw gyro data from the IMU
+        let (x, y, z) = self.read_gyro_raw()?;
+        // Get the set gyro full scale parameter
+        let scale = self.read_register_option::<GyroscopeFullScale>(Register::Ctrl2G)?.scale();
+        // Convert raw data to float
+        let (x, y, z) = (x as f32, y as f32, z as f32);
+        // Convert to RAD/s (Raw gyro data is in milli-degrees per second per bit)
+        Ok(
+            (
+                (x * scale / 1000.0).to_radians(),
+                (y * scale / 1000.0).to_radians(),
+                (z * scale / 1000.0).to_radians(),
+            )
+        )
     }
 
+    /// Read the accelerometer data for each axis (m/s^2)
+    pub fn read_accelerometer(&mut self) -> Result<(f32, f32, f32), Error<E>> {
+        let (x, y, z) = self.read_accelerometer_raw()?;
+        let scale = self.read_register_option::<AccelerometerScale>(Register::Ctrl1XL)?.scale();
+
+        // Convert raw values to float
+        let (x, y, z) = (x as f32, y as f32, z as f32);
+
+        // Convert to m/s^2 (Raw value is in mg/bit)
+        Ok(
+            (
+                x * scale * EARTH_GRAVITY / 1000.0,
+                y * scale * EARTH_GRAVITY / 1000.0,
+                z * scale * EARTH_GRAVITY / 1000.0,
+            )
+        )
+    }
+
+    /// Check if there is new accelerometer data
     pub fn accel_data_available(&mut self) -> Result<bool, Error<E>> {
         self.read_status().map(|status| status & 0b1 != 0)
     }
 
+    /// Check if there is new gyro scope data
     pub fn gyro_data_available(&mut self) -> Result<bool, Error<E>> {
         self.read_status().map(|status| status & 0b10 != 0)
+    }
+
+    fn read_gyro_raw(&mut self) -> Result<(i16, i16, i16), Error<E>> {
+        self.read_sensor(Register::OutXLG)
+    }
+
+    fn read_accelerometer_raw(&mut self) -> Result<(i16, i16, i16), Error<E>> {
+        self.read_sensor(Register::OutXLXL)
     }
 
     fn check(&mut self) -> Result<bool, Error<E>> {
@@ -100,7 +163,12 @@ impl<I2C, E> Lsm6ds33<I2C>
     }
 
     fn write_register_option<RO: RegisterOption>(&mut self, register: Register, ro: RO) -> Result<(), Error<E>> {
-        self.write_bits(register, ro.value(), ro.mask(), ro.bit_offset())
+        self.write_bits(register, ro.value(), RO::mask(), RO::bit_offset())
+    }
+
+    fn read_register_option<RO: RegisterOption + TryFrom<u8>>(&mut self, register: Register) -> Result<RO, Error<E>> {
+        let value = self.read_register(register)?;
+        RO::try_from(value).map_err(|_| Error::RegisterReadFailed)
     }
 
     fn write_bit(&mut self, register: Register, value: u8, shift: u8) -> Result<(), Error<E>> {
@@ -113,7 +181,7 @@ impl<I2C, E> Lsm6ds33<I2C>
         self.write_register(register, modified_value)
     }
 
-    pub fn read_sensor(&mut self, start_reg: Register) -> Result<(i16, i16, i16), Error<E>> {
+    fn read_sensor(&mut self, start_reg: Register) -> Result<(i16, i16, i16), Error<E>> {
         let mut res = [0u8; 6];
         self.i2c.write_read(self.addr, &[start_reg.into()], &mut res).map(|_| {
             (
