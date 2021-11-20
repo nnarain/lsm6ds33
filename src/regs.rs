@@ -5,6 +5,13 @@
 // @date Nov 12 2021
 //
 
+use core::convert::TryFrom;
+
+#[derive(Debug)]
+pub enum RegisterError {
+    ConversionError
+}
+
 // Device registers
 #[derive(Clone, Copy)]
 pub enum Register {
@@ -94,8 +101,8 @@ impl From<Register> for u8 {
 
 pub trait RegisterOption {
     fn value(&self) -> u8;
-    fn bit_offset(&self) -> u8;
-    fn mask(&self) -> u8;
+    fn bit_offset() -> u8;
+    fn mask() -> u8;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -121,10 +128,10 @@ impl RegisterOption for AccelerometerOutput {
     fn value(&self) -> u8 {
         *self as u8
     }
-    fn mask(&self) -> u8 {
+    fn mask() -> u8 {
         0xF
     }
-    fn bit_offset(&self) -> u8 {
+    fn bit_offset() -> u8 {
         4
     }
 }
@@ -142,11 +149,37 @@ impl RegisterOption for AccelerometerScale {
     fn value(&self) -> u8 {
         *self as u8
     }
-    fn mask(&self) -> u8 {
+    fn mask() -> u8 {
         0x03
     }
-    fn bit_offset(&self) -> u8 {
+    fn bit_offset() -> u8 {
         2
+    }
+}
+
+impl AccelerometerScale {
+    pub fn scale(&self) -> f32 {
+        match *self {
+            Self::G02 => 0.061,
+            Self::G04 => 0.122,
+            Self::G08 => 0.244,
+            Self::G16 => 0.488,
+        }
+    }
+}
+
+impl TryFrom<u8> for AccelerometerScale {
+    type Error = RegisterError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        let value = (value >> Self::bit_offset()) & Self::mask();
+        match value {
+            0b00 => Ok(Self::G02),
+            0b01 => Ok(Self::G16),
+            0b10 => Ok(Self::G04),
+            0b11 => Ok(Self::G08),
+            _ => Err(RegisterError::ConversionError),
+        }
     }
 }
 
@@ -162,10 +195,10 @@ impl RegisterOption for AccelerometerBandwidth {
     fn value(&self) -> u8 {
         *self as u8
     }
-    fn mask(&self) -> u8 {
+    fn mask() -> u8 {
         0x03
     }
-    fn bit_offset(&self) -> u8 {
+    fn bit_offset() -> u8 {
         0
     }
 }
@@ -193,51 +226,80 @@ impl RegisterOption for GyroscopeOutput {
     fn value(&self) -> u8 {
         *self as u8
     }
-    fn mask(&self) -> u8 {
+    fn mask() -> u8 {
         0xF
     }
-    fn bit_offset(&self) -> u8 {
+    fn bit_offset() -> u8 {
         4
     }
 }
 
 #[derive(Debug, Clone, Copy)]
 pub enum GyroscopeFullScale {
-    Dps245 = 0b00,
-    Dps500 = 0b01,
-    Dps1000 = 0b10,
-    Dps2000 = 0b11,
+    Dps125 = 0b001,
+    Dps245 = 0b000,
+    Dps500 = 0b010,
+    Dps1000 = 0b100,
+    Dps2000 = 0b110,
 }
 
 impl RegisterOption for GyroscopeFullScale {
     fn value(&self) -> u8 {
         *self as u8
     }
-    fn mask(&self) -> u8 {
-        0b11
+    fn mask() -> u8 {
+        0b111
     }
-    fn bit_offset(&self) -> u8 {
-        2
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum GyroscopeFullScale125Dps {
-    Disabled = 0,
-    Enabled = 1,
-}
-
-impl RegisterOption for GyroscopeFullScale125Dps {
-    fn value(&self) -> u8 {
-        *self as u8
-    }
-    fn mask(&self) -> u8 {
-        0b1
-    }
-    fn bit_offset(&self) -> u8 {
+    fn bit_offset() -> u8 {
         1
     }
 }
+
+impl GyroscopeFullScale {
+    pub fn scale(&self) -> f32 {
+        match *self {
+            Self::Dps125  => 4.375,
+            Self::Dps245  => 8.75,
+            Self::Dps500  => 17.50,
+            Self::Dps1000 => 35.0,
+            Self::Dps2000 => 70.0,
+        }
+    }
+}
+
+impl TryFrom<u8> for GyroscopeFullScale {
+    type Error = RegisterError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        let value = (value >> Self::bit_offset()) & Self::mask();
+        match value {
+            0b001 => Ok(GyroscopeFullScale::Dps125),
+            0b000 => Ok(GyroscopeFullScale::Dps245),
+            0b010 => Ok(GyroscopeFullScale::Dps500),
+            0b100 => Ok(GyroscopeFullScale::Dps1000),
+            0b110 => Ok(GyroscopeFullScale::Dps2000),
+            _ => Err(RegisterError::ConversionError),
+        }
+    }
+}
+
+// #[derive(Debug, Clone, Copy)]
+// pub enum GyroscopeFullScale125Dps {
+//     Disabled = 0,
+//     Enabled = 1,
+// }
+
+// impl RegisterOption for GyroscopeFullScale125Dps {
+//     fn value(&self) -> u8 {
+//         *self as u8
+//     }
+//     fn mask() -> u8 {
+//         0b1
+//     }
+//     fn bit_offset() -> u8 {
+//         1
+//     }
+// }
 
 // pub fn option_mask<T: RegisterOption>(opt: &T) -> u8 {
 //     0x01 << opt.bit_offset()
