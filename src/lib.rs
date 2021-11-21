@@ -125,9 +125,9 @@ impl<I2C, E> Lsm6ds33<I2C>
         // Convert to m/s^2 (Raw value is in mg/bit)
         Ok(
             (
-                x * scale * EARTH_GRAVITY / 1000.0,
-                y * scale * EARTH_GRAVITY / 1000.0,
-                z * scale * EARTH_GRAVITY / 1000.0,
+                (x * scale / 1000.0) * EARTH_GRAVITY,
+                (y * scale / 1000.0) * EARTH_GRAVITY,
+                (z * scale / 1000.0) * EARTH_GRAVITY,
             )
         )
     }
