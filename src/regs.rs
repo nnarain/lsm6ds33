@@ -13,7 +13,7 @@ pub enum RegisterError {
 }
 
 // Device registers
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum Register {
     FifoCtrl1 = 0x06,
     FifoCtrl2 = 0x07,
@@ -44,8 +44,8 @@ pub enum Register {
 
     StatusReg = 0x1E,
 
-    OutTempL = 0x1F,
-    OutTempH = 0x20,
+    OutTempL = 0x20,
+    OutTempH = 0x21,
 
     OutXLG = 0x22,
     OutXHG = 0x23,

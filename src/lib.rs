@@ -101,7 +101,7 @@ impl<I2C, E> Lsm6ds33<I2C>
         // Read the raw gyro data from the IMU
         let (x, y, z) = self.read_gyro_raw()?;
         // Get the set gyro full scale parameter
-        let scale = self.read_register_option::<GyroscopeFullScale>(Register::Ctrl2G)?.scale();
+        let scale = self.read_gyroscope_scale()?.scale();
         // Convert raw data to float
         let (x, y, z) = (x as f32, y as f32, z as f32);
         // Convert to RAD/s (Raw gyro data is in milli-degrees per second per bit)
@@ -117,7 +117,7 @@ impl<I2C, E> Lsm6ds33<I2C>
     /// Read the accelerometer data for each axis (m/s^2)
     pub fn read_accelerometer(&mut self) -> Result<(f32, f32, f32), Error<E>> {
         let (x, y, z) = self.read_accelerometer_raw()?;
-        let scale = self.read_register_option::<AccelerometerScale>(Register::Ctrl1XL)?.scale();
+        let scale = self.read_accelerometer_scale()?.scale();
 
         // Convert raw values to float
         let (x, y, z) = (x as f32, y as f32, z as f32);
@@ -132,6 +132,21 @@ impl<I2C, E> Lsm6ds33<I2C>
         )
     }
 
+    /// Read the temperature
+    pub fn read_temperature(&mut self) -> Result<f32, Error<E>> {
+        let lo = self.read_register(Register::OutTempL)?;
+        let hi = self.read_register(Register::OutTempH)?;
+
+        // Raw temperature as signal 16-bit number
+        let temperature = ((hi as i16) << 8) | (lo as i16);
+        // As float
+        let temperature = temperature as f32;
+        // Converted given the temperature sensitively value 16 bits per C
+        let temperature = (temperature / 16.0) + 25.0;
+
+        Ok(temperature)
+    }
+
     /// Check if there is new accelerometer data
     pub fn accel_data_available(&mut self) -> Result<bool, Error<E>> {
         self.read_status().map(|status| status & 0b1 != 0)
@@ -140,6 +155,16 @@ impl<I2C, E> Lsm6ds33<I2C>
     /// Check if there is new gyro scope data
     pub fn gyro_data_available(&mut self) -> Result<bool, Error<E>> {
         self.read_status().map(|status| status & 0b10 != 0)
+    }
+
+    /// Read the accelerometer scale value from the configuration register
+    pub fn read_accelerometer_scale(&mut self) -> Result<AccelerometerScale, Error<E>> {
+        self.read_register_option(Register::Ctrl1XL)
+    }
+
+    /// Read the gyroscope scale value from the configuration register
+    pub fn read_gyroscope_scale(&mut self) -> Result<GyroscopeFullScale, Error<E>> {
+        self.read_register_option(Register::Ctrl2G)
     }
 
     fn read_gyro_raw(&mut self) -> Result<(i16, i16, i16), Error<E>> {
