@@ -34,13 +34,6 @@ impl<E> From<E> for Error<E> {
     }
 }
 
-// Allow converting register errors to the imu error
-// impl<E> From<RegisterError> for Error<E> {
-//     fn from(re: RegisterError) -> Self {
-//         Error::RegisterReadFailed(re)
-//     }
-// }
-
 // Value of the WHO_AM_I register
 const CHIP_ID: u8 = 0x69;
 
