@@ -12,3 +12,4 @@ license-file="LICENSE"
 
 [dependencies]
 embedded-hal = "0.2"
+embedded-hal-async = "0.1.0-alpha.1"
