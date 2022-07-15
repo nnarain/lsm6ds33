@@ -89,6 +89,13 @@ impl<I2C, E> Lsm6ds33<I2C>
         self.write_register_option(Register::Ctrl2G, scale).await
     }
 
+    /// Set the low power mode
+    pub async fn set_low_power_mode(&mut self, low_power: bool) -> Result<(), Error<E>> {
+        // N.B. "1" means low-power, "0" means high-performance.
+        self.write_bit(Register::Ctrl6C, low_power as u8, Ctrl6C::AccelHighPerformanceMode as u8).await?;
+        self.write_bit(Register::Ctrl7G, low_power as u8, Ctrl7G::HighPerformanceMode as u8).await
+    }
+
     /// Read the gyroscope data for each axis (RAD/s)
     pub async fn read_gyro(&mut self) -> Result<(f32, f32, f32), Error<E>> {
         // Read the raw gyro data from the IMU

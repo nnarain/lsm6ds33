@@ -316,3 +316,18 @@ pub enum Ctrl3C {
     Endian = 1,
     SoftwareReset = 0,
 }
+
+/// Bit fields for CTRL6_C
+pub enum Ctrl6C {
+    GyroEdgeTrigge = 7,
+    GyroLevelTrigger = 6,
+    GyroLevelLatched = 5,
+    AccelHighPerformanceMode = 4,
+}
+
+/// Bit fields for CTRL6_G
+pub enum Ctrl7G {
+    HighPerformanceMode = 7,
+    HighPassFilter = 6,
+    SourceRegisterRounding = 3,
+}
