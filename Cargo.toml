@@ -10,5 +10,12 @@ categories = ["embedded", "hardware-support", "no-std"]
 readme="README.md"
 license-file="LICENSE"
 
+[features]
+default = ["blocking"]
+blocking = ["embedded-hal"]
+async = ["embedded-hal-async"]
+
 [dependencies]
-embedded-hal = "0.2"
+embedded-hal = { version = "0.2", optional = true }
+embedded-hal-async = {version = "0.1.0-alpha.1", optional = true }
+maybe-async-cfg = "0.2.1"
