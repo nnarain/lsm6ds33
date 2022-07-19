@@ -1,6 +1,6 @@
 [package]
 name = "lsm6ds33"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2018"
 description="A platform agnostic driver for the LSM6DS33 6-DoF Accel + Gyro IMU"
 authors = ["Natesh Narain <nnaraindev@gmail.com>"]
