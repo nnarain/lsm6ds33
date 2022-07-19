@@ -17,6 +17,11 @@ pub use regs::{
     GyroscopeFullScale, GyroscopeOutput,
 };
 
+use maybe_async_cfg;
+
+#[cfg(feature = "blocking")]
+use embedded_hal::blocking::i2c::{Write, WriteRead};
+#[cfg(feature = "async")]
 use embedded_hal_async::i2c::I2c;
 
 /// Enum containing all possible types of errors when interacting with the IMU
@@ -41,13 +46,15 @@ const CHIP_ID: u8 = 0x69;
 const EARTH_GRAVITY: f32 = 9.80665;
 
 /// 6-DoF IMU accelerometer + gyro
+#[maybe_async_cfg::maybe(sync(feature="blocking", keep_self), async(feature="async"))]
 pub struct Lsm6ds33<I2C> {
     i2c: I2C,
     addr: u8,
 }
 
+#[maybe_async_cfg::maybe(sync(feature="blocking", keep_self), async(feature="async", idents(Write(async="I2c"),WriteRead(async="I2c"))))]
 impl<I2C, E> Lsm6ds33<I2C>
-    where I2C: I2c<Error = E> {
+    where I2C: Write<Error = E> + WriteRead<Error = E> {
 
     /// Create an instance of the Lsm6ds33 driver
     /// If the device cannot be detected on the bus, an error will be returned
