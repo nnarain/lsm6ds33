@@ -58,16 +58,18 @@ impl<I2C, E> Lsm6ds33<I2C>
 
     /// Create an instance of the Lsm6ds33 driver
     /// If the device cannot be detected on the bus, an error will be returned
-    pub async fn new(i2c: I2C, addr: u8) -> Result<Self, Error<E>> {
+    pub async fn new(i2c: I2C, addr: u8) -> Result<Self, (I2C, Error<E>)> {
         let mut lsm = Lsm6ds33 {i2c, addr};
 
-        let chip_detected = lsm.check().await?;
-        if chip_detected {
-            lsm.set_auto_increment(true).await?;
-            Ok(lsm)
-        }
-        else {
-            Err(Error::ChipDetectFailed)
+        match lsm.check().await {
+            Ok(true) => {
+                match lsm.set_auto_increment(true).await {
+                    Ok(()) => Ok(lsm),
+                    Err(e) => Err((lsm.release(), e)),
+                }
+            },
+            Ok(false) => Err((lsm.release(), Error::ChipDetectFailed)),
+            Err(e) => Err((lsm.release(), e)),
         }
     }
 
