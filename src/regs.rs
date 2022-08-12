@@ -9,7 +9,7 @@ use core::convert::TryFrom;
 
 #[derive(Debug)]
 pub enum RegisterError {
-    ConversionError
+    ConversionError,
 }
 
 // Device registers
@@ -112,13 +112,13 @@ pub trait RegisterOption {
 #[derive(Debug, Clone, Copy)]
 pub enum AccelerometerOutput {
     PowerDown = 0b0000,
-    Rate13    = 0b0001,
-    Rate26    = 0b0010,
-    Rate52    = 0b0011,
-    Rate104   = 0b0100,
-    Rate208   = 0b0101,
-    Rate416   = 0b0110,
-    Rate833   = 0b0111,
+    Rate13 = 0b0001,
+    Rate26 = 0b0010,
+    Rate52 = 0b0011,
+    Rate104 = 0b0100,
+    Rate208 = 0b0101,
+    Rate416 = 0b0110,
+    Rate833 = 0b0111,
     Rate1_66k = 0b1000,
     Rate3_33k = 0b1001,
     Rate6_66k = 0b1010,
@@ -188,7 +188,7 @@ pub enum AccelerometerBandwidth {
     Freq400 = 0b00,
     Freq200 = 0b01,
     Freq100 = 0b10,
-    Freq50  = 0b11,
+    Freq50 = 0b11,
 }
 
 impl RegisterOption for AccelerometerBandwidth {
@@ -210,13 +210,13 @@ impl RegisterOption for AccelerometerBandwidth {
 #[derive(Debug, Clone, Copy)]
 pub enum GyroscopeOutput {
     PowerDown = 0b0000,
-    Rate13    = 0b0001,
-    Rate26    = 0b0010,
-    Rate52    = 0b0011,
-    Rate104   = 0b0100,
-    Rate208   = 0b0101,
-    Rate416   = 0b0110,
-    Rate833   = 0b0111,
+    Rate13 = 0b0001,
+    Rate26 = 0b0010,
+    Rate52 = 0b0011,
+    Rate104 = 0b0100,
+    Rate208 = 0b0101,
+    Rate416 = 0b0110,
+    Rate833 = 0b0111,
     Rate1_66k = 0b1000,
     Rate3_33k = 0b1001,
     Rate6_66k = 0b1010,
@@ -258,9 +258,9 @@ impl RegisterOption for GyroscopeFullScale {
 impl GyroscopeFullScale {
     pub fn scale(&self) -> f32 {
         match *self {
-            Self::Dps125  => 4.375,
-            Self::Dps245  => 8.75,
-            Self::Dps500  => 17.50,
+            Self::Dps125 => 4.375,
+            Self::Dps245 => 8.75,
+            Self::Dps500 => 17.50,
             Self::Dps1000 => 35.0,
             Self::Dps2000 => 70.0,
         }
